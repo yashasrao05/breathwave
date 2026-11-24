@@ -1,0 +1,1 @@
+recording_id,participant_id,file_path,dataset_role,source_type,duration_s,pace_label,microphone_distance_cm,device,conditions,analysis_start_s,analysis_end_s,reference_method,manual_complete_cycles,reference_window_duration_s,event_labels_scorable,notes
