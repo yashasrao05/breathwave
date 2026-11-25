@@ -4,7 +4,7 @@ Build a student-level Streamlit GUI that estimates respiration rate from recorde
 
 **Prepared:** 23 November 2026. **Working midterm target:** 28 November 2026, based on the latest planning discussion. The originally pasted announcement lists 24 October 2026; confirm the actual final submission date separately.
 
-**Current state:** M1 audio input and preparation are implemented. The app supports WAV upload, microphone recording, playback, input validation, mono conversion, DC removal, and resampling to 16000 Hz. Filtering, plots, and BPM estimation belong to later stages. No real breathing recordings or experimental accuracy results have been added.
+**Current state:** M2 filtering and envelope plots are implemented alongside M1 audio input and preparation. The app supports WAV upload, microphone recording controls, playback, validation, mono conversion, DC removal, resampling, audio/envelope filtering, and signal plots. Peak detection and BPM estimation begin in M3. No real breathing recordings or experimental accuracy results have been added.
 
 ## Run the app
 
@@ -25,18 +25,22 @@ Launch the app:
 
 Open [the local app](http://localhost:8501) if the browser does not open automatically. Use Ctrl+C in the terminal to stop it.
 
-## Use M1
+## Use the M2 app
 
 1. Choose **Upload WAV** or **Record audio**. Allow microphone access when recording.
 2. Provide 30 to 120 seconds of audio, preferably around 60 seconds. Use mono or stereo WAV with a sample rate of at least 8000 Hz, up to 50 MB.
 3. Inspect the original duration, sample rate, channels, and playback.
-4. Click **Analyze audio** to prepare the signal. M1 reports audio preparation only; no breathing rate is calculated yet.
+4. Click **Analyze audio** to prepare and filter the signal, extract its RMS envelope, and display the plots. No breathing rate is calculated yet.
+5. Inspect the original/filtered waveforms, input-audio spectrogram, and raw RMS plus filtered envelope. Gray waveform/envelope margins mark the first and last five seconds, excluded from later cycle analysis.
+6. Open **Filter and envelope settings** to see the actual cutoffs, filter design, RMS window/hop, and envelope sample rate.
 
 Changing or removing the input clears the previous preparation result. Original decoded samples retain their amplitude; preparation averages channels, subtracts the mono mean, and uses polyphase FIR resampling when needed. Near-silence is checked after DC removal with an RMS threshold of 0.000001. This threshold is an input guard, not a calibrated signal-quality score.
 
+M2 uses a 100–2000 Hz Butterworth audio band-pass, RMS windows of 250 ms every 50 ms, and a 0.1–0.8 Hz Butterworth envelope band-pass at 20 Hz. Both bands use SciPy design N=2 with SOS forward-backward filtering: fourth order per pass and effective response order eight. These are initial choices for pilot testing. The full clip is filtered before the central interval is selected. A warning appears for nearly constant RMS envelopes, since filtering edges can otherwise resemble a slow pattern.
+
 The microphone works through the browser. Use localhost for the local demo. Microphone permission, actual capture, and audible playback must be checked on the demo device. The app keeps the current audio in the running session and does not save recordings to a data folder automatically.
 
-## Check M1
+## Run the checks
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
@@ -47,12 +51,14 @@ These checks use generated audio for engineering validation. They do not establi
 
 [M1 verification](docs/07_M1_VERIFICATION.md) records the tested versions, 13 passing tests, browser checks, screenshots, and microphone/playback checklist. The current GUI tests use Streamlit 1.67's AppTest upload helpers.
 
+[M2 verification](docs/08_M2_VERIFICATION.md) records the current 21 passing tests, known-modulation engineering measurements, timing checks, settings, and plot screenshots. Real breathing validation remains pending.
+
 ## Source files
 
-- [app.py](app.py): Streamlit input, playback, metadata, and preparation action.
-- [dsp.py](dsp.py): shared audio limits, WAV decoding, mono conversion, DC removal, and resampling.
+- [app.py](app.py): Streamlit input, playback, metadata, analysis action, and Matplotlib signal plots.
+- [dsp.py](dsp.py): shared configuration, WAV decoding, preparation, SOS filtering, and RMS envelope extraction.
 - [requirements.txt](requirements.txt): application dependencies.
-- [tests](tests/): audio preparation and GUI regression checks.
+- [tests](tests/): audio preparation, filtering, envelope, and GUI regression checks.
 
 ## Planning reference pack
 

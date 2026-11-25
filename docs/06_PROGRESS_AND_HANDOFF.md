@@ -6,17 +6,17 @@ Use this file as the state record between chats. Update it after each implementa
 
 | Field | State |
 | --- | --- |
-| Last updated | 24 November 2026 |
+| Last updated | 25 November 2026 |
 | Active milestone | Midterm prototype |
-| Active stage | M1 implemented and verified; ready for M2 |
+| Active stage | M2 implemented and verified; ready for M3 |
 | Documentation pack | Created |
-| Application code | M1 app.py, dsp.py, requirements.txt, and tests implemented |
+| Application code | M1 input/preparation and M2 filtering/envelope/plots implemented |
 | Real recordings | Not collected in this workspace |
 | Manual labels | Not created |
-| GUI verification | Upload/preparation and recording-mode UI checked in browser; physical microphone capture and audible playback pending |
-| DSP verification | M1 decoding/preparation checks pass; filtering and estimation not started |
-| Experimental results | Not produced |
-| Next action | Send M2 for filters, RMS envelope, and plots |
+| GUI verification | Input and all M2 plots checked in browser; physical microphone capture and audible playback pending |
+| DSP verification | 21 tests pass, including filtering, RMS timing, and known-modulation checks; estimators not started |
+| Experimental results | Engineering sanity checks only; real-recording evaluation pending |
+| Next action | Send M3 for peak detection and candidate BPM |
 | Final-project phase | Planned; do not start before midterm review |
 
 ## Stage tracker
@@ -25,7 +25,7 @@ Use this file as the state record between chats. Update it after each implementa
 | --- | --- | --- | --- |
 | P0 | Read reference documents and inspect workspace | Complete | Context audit below; no implementation started |
 | M1 | App shell and audio input | Implemented and verified; physical capture pending | 13 tests pass, HTTP checks pass, browser upload/preparation checked; docs/07_M1_VERIFICATION.md |
-| M2 | Filters, envelope, plots | Not started | |
+| M2 | Filters, envelope, plots | Implemented and verified | 21 tests pass; browser plot screenshots and engineering measurements in docs/08_M2_VERIFICATION.md |
 | M3 | Peak estimate and markers | Not started | |
 | M4 | Real-recording pilot | Not started | |
 | M5 | Midterm checkpoint | Not started | |
@@ -47,7 +47,9 @@ Use this file as the state record between chats. Update it after each implementa
 
 ## Actual configuration
 
-M1 AUDIO_CONFIG in dsp.py implements a 16000 Hz processing rate, minimum 8000 Hz source rate, 30 to 120 second duration, 50 MiB upload limit, and 0.000001 RMS silence guard. The reader accepts mono or stereo WAV-family files and retains the original decoded amplitudes. Channel averaging and DC removal precede polyphase FIR resampling. No analysis band-pass, RMS envelope, or estimator is implemented yet. Final evaluation settings are not frozen.
+Shared AUDIO_CONFIG in dsp.py implements a 16000 Hz processing rate, minimum 8000 Hz source rate, 30 to 120 second duration, 50 MiB upload limit, and 0.000001 RMS silence guard. The reader accepts mono or stereo WAV-family files and retains the original decoded amplitudes. Channel averaging and DC removal precede polyphase FIR resampling.
+
+M2 adds the 100–2000 Hz audio band-pass and 0.1–0.8 Hz envelope band-pass, both Butterworth design N=2 using SOS forward-backward filtering. Each band-pass is fourth order per pass with effective response order eight. RMS uses 250 ms windows and a 50 ms hop, center timestamps, and a 20 Hz envelope rate. The full clip is filtered before a mask selects frame centers in [5 seconds, duration minus 5 seconds). Spectrogram display uses 512-sample Hann windows with 256-sample overlap. Peak detection and estimators remain unimplemented; final evaluation settings are not frozen.
 
 Tested environment: Windows, Python 3.12.10, Streamlit 1.67.0, NumPy 2.5.5, SciPy 1.18.1, Matplotlib 3.11.2, and SoundFile 0.14.0. A project-local .venv is installed; py launcher discovery failed, so Python 3.12 was invoked using its existing executable path during setup.
 
@@ -63,6 +65,17 @@ When code exists, record: audio band and N; filtering procedure; processing samp
 - Pending manual checks: actual browser microphone permission/capture, audible speaker playback, and real breathing clips. A staged WAV verified the recording-widget code path, not microphone hardware.
 - Student contributions: none inferred or entered. Implementation assistance and automated checks do not establish either member's individual contribution.
 - Next stage: M2 only. Filtering, plots, envelope extraction, peak BPM, ACF, quality scoring, and noise experiments remain unimplemented.
+
+## M2 update on 25 November 2026
+
+- Implemented: bandpass_filter, rms_envelope, and analyze_audio in dsp.py; waveform, spectrogram, and RMS/rhythm displays in app.py; shared M2 configuration; stale-analysis clearing; flat-envelope warnings.
+- Tests: 21 unittest cases passed in 27.590 seconds after correcting the GUI test's image-element lookup. Syntax checks and pip check passed. The health endpoint returned HTTP 200 with body ok.
+- Engineering checks: 0.2, 0.3, and 0.4 Hz amplitude modulation of a 700 Hz carrier survived the WAV pipeline. Correlations with the expected rhythm were 0.999939, 0.999945, and 0.999962. Test-only spectral checks found the same known frequencies. No rate estimator was added to the app.
+- Timing: a 60-second case produces 1196 RMS frames, from 0.125 to 59.875 seconds; 1000 frame centers lie in the central 5–55 second interval. The full filtered audio and envelope remain available for display.
+- Browser verification: uploaded the generated 60-second, 44100 Hz .cache/m2-am-engineering.wav; confirmed successful analysis, the 5–55 second interval, three plot figures, their axes/units, the 700 Hz spectrogram carrier, and aligned raw RMS/filtered rhythm. Saved screenshots under docs/screenshots/m2-*.png.
+- Files: tests/test_processing.py adds eight engineering tests. README and blueprint reflect implemented behavior. Details and numerical results are in docs/08_M2_VERIFICATION.md.
+- Pending: real breathing recordings, microphone hardware capture, audible playback, and pilot-based filter validation. No performance conclusions or individual student contributions were invented.
+- Next authorized stage: M3 only. No peak detection, candidate count, BPM, ACF, final quality score, or noise experiment is implemented.
 
 ## Stage update template
 

@@ -1,11 +1,11 @@
-"""Audio input and preparation helpers, independent of the Streamlit GUI."""
+"""Audio preparation, filtering, and RMS extraction, independent of Streamlit."""
 
 from io import BytesIO
 from math import gcd
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import resample_poly
+from scipy.signal import butter, resample_poly, sosfiltfilt
 
 
 AUDIO_CONFIG = {
@@ -15,6 +15,12 @@ AUDIO_CONFIG = {
     "max_duration_s": 120,
     "max_upload_bytes": 50 * 1024 * 1024,
     "silence_rms": 1e-6,
+    "audio_band_hz": (100.0, 2000.0),
+    "envelope_band_hz": (0.1, 0.8),
+    "filter_design_order": 2,
+    "rms_window_s": 0.25,
+    "rms_hop_s": 0.05,
+    "edge_margin_s": 5.0,
 }
 
 
@@ -97,4 +103,93 @@ def prepare_audio(recording):
         "dc_offset": dc_offset,
         "source_rms_after_dc": rms,
         "resampled": source_rate != target_rate,
+    }
+
+
+def bandpass_filter(samples, sample_rate, band_hz, order):
+    """Apply an IIR Butterworth band-pass in SOS form, forward and backward."""
+    samples = np.asarray(samples, dtype=np.float64)
+    if samples.ndim != 1 or samples.size == 0 or not np.isfinite(samples).all():
+        raise ValueError("Filtering needs a non-empty, finite mono signal.")
+    low, high = band_hz
+    if not 0 < low < high < sample_rate / 2 or order < 1:
+        raise ValueError("Invalid filter settings: cutoffs must be below the Nyquist frequency.")
+    sos = butter(order, band_hz, btype="bandpass", fs=sample_rate, output="sos")
+    try:
+        filtered = sosfiltfilt(sos, samples)
+    except ValueError as error:
+        raise ValueError("The signal is too short for forward-backward filtering.") from error
+    if not np.isfinite(filtered).all():
+        raise ValueError("Filtering produced invalid samples. Try a different recording.")
+    return filtered
+
+
+def rms_envelope(samples, sample_rate, window_s, hop_s):
+    """Return frame RMS and center times for half-open audio frames."""
+    samples = np.asarray(samples, dtype=np.float64)
+    if samples.ndim != 1 or not np.isfinite(samples).all() or sample_rate <= 0:
+        raise ValueError("Envelope extraction needs finite mono audio and a valid sample rate.")
+    window = round(window_s * sample_rate)
+    hop = round(hop_s * sample_rate)
+    if window < 1 or hop < 1 or samples.size < window:
+        raise ValueError("The audio is too short for the selected RMS window, or the window/hop is invalid.")
+    starts = np.arange(0, samples.size - window + 1, hop)
+    # Cumulative energy avoids copying every overlapping frame into a matrix.
+    with np.errstate(over="ignore", invalid="ignore"):
+        energy = np.concatenate(([0.0], np.cumsum(samples**2)))
+        mean_square = (energy[starts + window] - energy[starts]) / window
+    if not np.isfinite(mean_square).all():
+        raise ValueError("The sample energy is too large for envelope extraction.")
+    rms = np.sqrt(np.maximum(mean_square, 0.0))
+    times = (starts + window / 2) / sample_rate
+    return times, rms
+
+
+def analyze_audio(prepared):
+    """M2 pipeline: filter the full clip, extract RMS, then select valid centers."""
+    config = AUDIO_CONFIG.copy()
+    samples = prepared["audio"]
+    sample_rate = prepared["sample_rate"]
+    if sample_rate != config["sample_rate"]:
+        raise ValueError("Prepare the recording at 16000 Hz before running analysis.")
+    filtered = bandpass_filter(
+        samples, sample_rate, config["audio_band_hz"], config["filter_design_order"]
+    )
+    times, rms = rms_envelope(
+        filtered, sample_rate, config["rms_window_s"], config["rms_hop_s"]
+    )
+    envelope_rate = sample_rate / round(config["rms_hop_s"] * sample_rate)
+    rhythm = bandpass_filter(
+        rms, envelope_rate, config["envelope_band_hz"], config["filter_design_order"]
+    )
+    duration = len(samples) / sample_rate
+    start = config["edge_margin_s"]
+    end = duration - config["edge_margin_s"]
+    mask = (times >= start) & (times < end)
+    if start >= end or np.count_nonzero(mask) < 3:
+        raise ValueError("Not enough audio remains after excluding the first and last five seconds.")
+    central_rms = rms[mask]
+    if float(np.sqrt(np.mean(filtered**2))) <= config["silence_rms"]:
+        raise ValueError("No usable sound remains in the audio filter band. Try another recording.")
+    warnings = []
+    span = float(np.percentile(central_rms, 95) - np.percentile(central_rms, 5))
+    if span <= max(float(np.median(central_rms)) * 0.01, np.finfo(float).eps):
+        warnings.append(
+            "The RMS envelope has very little amplitude variation. "
+            "Filtered edge effects can still appear; a repeating breathing pattern is not established."
+        )
+    return {
+        "status": "processed",
+        "config": config,
+        "sample_rate": sample_rate,
+        "audio_time_s": np.arange(len(samples)) / sample_rate,
+        "filtered_audio": filtered,
+        "envelope_time_s": times,
+        "rms": rms,
+        "rhythm": rhythm,
+        "envelope_sample_rate": envelope_rate,
+        "analysis_start_s": start,
+        "analysis_end_s": end,
+        "analysis_mask": mask,
+        "warnings": warnings,
     }

@@ -1,6 +1,6 @@
 # Project blueprint
 
-Implement a compact offline audio-analysis app. A complete recording is processed after capture or upload. M1 input and preparation are implemented as of 24 November 2026. Filtering and estimation below remain the starting design for later stages; pilot recordings determine whether settings need revision.
+Implement a compact offline audio-analysis app. A complete recording is processed after capture or upload. M1 input/preparation and M2 filtering/envelope plots are implemented as of 25 November 2026. Peak detection and estimation remain the starting design for later stages; pilot recordings determine whether settings need revision.
 
 ## Initial settings
 
@@ -23,7 +23,7 @@ Implement a compact offline audio-analysis app. A complete recording is processe
 | Peak prominence | Start at 0.15 times the envelope 95th-to-5th percentile span | Relative threshold; expose for pilot tuning, then freeze |
 | Minimum markers | Three accepted cycle markers | Two intervals give a provisional estimate; few cycles limit reliability |
 
-The filter, envelope, and detection settings are proposed choices, not measured optimum values. The input limits and preparation settings are implemented in M1. A 5-second margin does not guarantee all filter transients are removed. Inspect the plots and change the policy if evidence warrants it, before the final evaluation is frozen.
+The input, filter, and envelope defaults are implemented through M2, but are not measured optimum choices. Detection settings remain proposed. A 5-second margin does not guarantee all filter transients are removed. Inspect the plots and change the policy if evidence warrants it, before the final evaluation is frozen.
 
 Use one shared configuration in dsp.py. Do not duplicate defaults in the UI, evaluation code, and report. When users change a tuning control, include the actual setting in the displayed run details and exported results.
 
@@ -104,6 +104,8 @@ Use one analysis page for the midterm:
 Add an Evaluation tab in the final project for labeled clips, method comparison, SNR sweep, a table, and CSV download. Add the ACF estimate and quality indicator to the analysis view.
 
 Every plot needs a descriptive title, units, and a readable time axis. Spectrogram frequency is acoustic frequency in Hz; the rhythm plot time axis is seconds. Downsample only plotted waveform points if needed; do not accidentally decimate the analysis signal.
+
+M2 displays the original mono-average waveform and filtered waveform with extrema-preserving display bins. The spectrogram uses prepared 16000 Hz mono audio before the audio band-pass: 512-sample Hann windows, 256-sample overlap, and PSD in dB relative to 1 input-unit squared per Hz. The RMS and signed filtered envelope appear on separate aligned axes. A display warning is issued when the central RMS 95th-to-5th percentile span is at most 1% of its median, with a machine-epsilon floor; this is a heuristic flat-envelope warning, not the final quality indicator.
 
 ## Project files and interfaces
 

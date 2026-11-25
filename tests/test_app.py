@@ -23,10 +23,12 @@ class AppTests(unittest.TestCase):
         app = AppTest.from_file(str(APP_PATH)).run(timeout=30)
         app.session_state["audio_token"] = ("Upload WAV", "previous-recording")
         app.session_state["prepared_audio"] = {"status": "old result"}
+        app.session_state["analysis"] = {"status": "old analysis"}
         app.radio[0].set_value("Record audio").run(timeout=30)
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(len(app.get("audio_input")), 1)
         self.assertNotIn("prepared_audio", app.session_state)
+        self.assertNotIn("analysis", app.session_state)
         self.assertTrue(app.button[0].disabled)
 
     def test_upload_prepare_then_replace_with_corrupt_input(self):
@@ -38,13 +40,16 @@ class AppTests(unittest.TestCase):
         self.assertEqual([metric.value for metric in app.metric], ["30.0 s", "44,100 Hz", "Mono"])
         app.button[0].click().run(timeout=30)
         self.assertEqual(len(app.exception), 0)
-        self.assertEqual(app.success[0].value, "Audio prepared successfully.")
+        self.assertEqual(app.success[0].value, "Audio filtered and envelope extracted successfully.")
         self.assertEqual(app.session_state["prepared_audio"]["sample_rate"], 16000)
+        self.assertEqual(app.session_state["analysis"]["envelope_sample_rate"], 20)
+        self.assertEqual(len(app.get("image")), 3)
         app.file_uploader[0].set_value(("broken.wav", b"invalid", "audio/wav")).run(timeout=30)
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(len(app.error), 1)
         self.assertEqual(len(app.success), 0)
         self.assertNotIn("prepared_audio", app.session_state)
+        self.assertNotIn("analysis", app.session_state)
         self.assertTrue(app.button[0].disabled)
 
     def test_silent_upload_reports_error_after_analyze(self):
@@ -64,7 +69,7 @@ class AppTests(unittest.TestCase):
         app.button[0].click().run(timeout=30)
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(len(app.get("audio")), 1)
-        self.assertEqual(app.success[0].value, "Audio prepared successfully.")
+        self.assertEqual(app.success[0].value, "Audio filtered and envelope extracted successfully.")
 
 
 if __name__ == "__main__":
