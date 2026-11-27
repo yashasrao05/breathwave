@@ -2,29 +2,33 @@
 
 The working target is 28 November 2026. Reach this checkpoint in session 1, then retain the prototype for demonstration. The goal is a functional baseline with a few manually checked real recordings.
 
+**M5 update, 27 November 2026:** by explicit user instruction, presentation/demo preparation is completed now while recordings are deferred. The overall validation checkpoint is **PARTIAL**. See [the item-by-item audit](14_M5_AUDIT.md), [presentation content](12_MIDTERM_PRESENTATION.md), and [demo runbook](13_MIDTERM_DEMO.md). Unchecked items below require the stated manual or real-data evidence, not more presentation packaging.
+
 ## Acceptance checklist
 
 Mark items complete only when supported by actual evidence.
 
-- [ ] Dependencies install and the documented command launches the app.
-- [ ] WAV upload decodes a supported recording and reports its metadata.
+- [x] Dependencies install and the documented command launches the app (existing tested environment).
+- [x] WAV upload decodes a supported recording and reports its metadata (engineering inputs).
 - [ ] Microphone recording is present and capture is manually verified on the demo machine.
 - [ ] Uploaded and recorded audio can be played back.
-- [ ] Mono conversion, DC removal, resampling, and filtering are implemented.
-- [ ] Waveform and spectrogram are readable and have units.
-- [ ] Raw RMS and filtered envelope are visible with correct time alignment.
-- [ ] Candidate cycle markers and the analyzed interval appear on the envelope.
-- [ ] Peak BPM is calculated from accepted intervals.
-- [ ] Silence, short input, corrupt input, and insufficient markers produce useful messages.
+- [x] Mono conversion, DC removal, resampling, and filtering are implemented.
+- [x] Waveform and spectrogram are readable and have units.
+- [x] Raw RMS and filtered envelope are visible with correct time alignment.
+- [x] Candidate cycle markers and the analyzed interval appear on the envelope.
+- [x] Peak BPM is calculated from accepted intervals.
+- [x] Silence, short input, corrupt input, and insufficient markers produce useful messages.
 - [ ] At least two real clips have manual reference measurements and documented outputs.
 - [ ] One real example has been inspected for inhale/exhale double counting.
-- [ ] Actual filter settings, limitations, and tuning decisions are recorded.
+- [x] Actual filter settings, limitations, and tuning decisions are recorded (no real-pilot tuning yet).
 - [ ] The contribution log reflects work each member actually performed.
-- [ ] The midterm presentation accurately separates completed and future work.
+- [x] The midterm presentation accurately separates completed and future work.
 
 A failed microphone test or missing real recordings makes the checkpoint partial. The upload path may still be demonstrated, but the presentation must state the limitation.
 
 ## Collecting the pilot recordings
+
+Use [the M4 guide](10_M4_PILOT_GUIDE.md) and [pilot worksheet](11_M4_PILOT_WORKSHEET.md). The app's Save original WAV control lets you preserve each take before starting another recording; move and rename downloads in data/pilot. Real-data acceptance items remain pending until those files and manual references are checked.
 
 Record 2 or 3 clips for the midterm. A quiet room and roughly 60-second clips are useful starting conditions. Use comfortable breathing and keep the microphone position consistent. Record the approximate distance, device, and background conditions; do not claim reliable operation at a distance that was not tested.
 
@@ -53,6 +57,8 @@ Create a real results file during M4, not while drafting this plan. Include:
 Two or three examples show prototype behavior. They do not establish broad accuracy or clinical validity.
 
 ## Demo sequence
+
+The original real-recording sequence below remains the target after deferred M4 validation. Until then, use the generated-input sequence in [the M5 runbook](13_MIDTERM_DEMO.md) and explicitly identify its engineering provenance.
 
 1. Launch the app using the documented command.
 2. Load a previously checked real clip and play a short segment.

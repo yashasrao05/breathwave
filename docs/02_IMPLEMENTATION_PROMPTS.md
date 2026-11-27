@@ -4,6 +4,8 @@ Copy Prompt 0 into a new implementation chat. Then send M1 through M5 one at a t
 
 If the new chat cannot read this project folder, attach the reference documents first. The prompts alone do not contain every technical detail.
 
+**Saved-state exception, 27 November 2026:** the user requested closing M4 software/preparation now and providing recordings later. M4 software/preparation and M5 presentation/demo packaging are complete; M4 real-data validation is deferred and the overall acceptance checkpoint remains partial. Do not repeat implementation from M1 or treat the deferred pilot as measured evidence. Use the deferred-M4 resume prompt in docs/13_MIDTERM_DEMO.md when data arrives. F1 still requires an explicit instruction.
+
 ## Prompt 0 Establish the working context
 
 ~~~text

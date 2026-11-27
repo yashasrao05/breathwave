@@ -8,15 +8,15 @@ Use this file as the state record between chats. Update it after each implementa
 | --- | --- |
 | Last updated | 27 November 2026 |
 | Active milestone | Midterm prototype |
-| Active stage | M3 implemented and verified; ready for M4 real-recording pilot |
+| Active stage | M4 software/preparation and M5 packaging complete under revised scope; stopped at midterm; real-recording pilot deferred |
 | Documentation pack | Created |
-| Application code | M1 input/preparation, M2 filtering/plots, and M3 peak-based candidate BPM implemented |
-| Real recordings | Not collected in this workspace |
-| Manual labels | Not created |
-| GUI verification | Input, plots, provisional BPM/count/duration, and markers checked in browser; physical microphone capture and audible playback pending |
-| DSP verification | 31 tests pass, including known-rate and failure cases; real-recording rate validation pending |
+| Application code | M1–M3 pipeline implemented; M4 Save original WAV control added |
+| Real recordings | None available; user confirmed on 27 November 2026 |
+| Manual labels | None available; pilot guide and empty worksheet prepared |
+| GUI verification | M2/M3 browser evidence retained; M5 full suite includes six passing GUI checks; physical capture, audible playback, and browser file save pending |
+| DSP verification | M5: 31 tests pass in 16.231 s; generated demo WAVs reproduce known-rate/failure results; real-recording validation pending |
 | Experimental results | Engineering sanity checks only; real-recording evaluation pending |
-| Next action | Send M4 and supply 2–3 real breathing WAV clips with manual counts or cycle labels |
+| Next action | Use M5 presentation/demo materials; later resume deferred M4 with real clips and references, update acceptance evidence; await explicit F1 instruction |
 | Final-project phase | Planned; do not start before midterm review |
 
 ## Stage tracker
@@ -27,8 +27,8 @@ Use this file as the state record between chats. Update it after each implementa
 | M1 | App shell and audio input | Implemented and verified; physical capture pending | 13 tests pass, HTTP checks pass, browser upload/preparation checked; docs/07_M1_VERIFICATION.md |
 | M2 | Filters, envelope, plots | Implemented and verified | 21 tests pass; browser plot screenshots and engineering measurements in docs/08_M2_VERIFICATION.md |
 | M3 | Peak estimate and markers | Implemented and verified on engineering inputs | 31 tests pass; known-rate and stress results plus browser screenshots in docs/09_M3_VERIFICATION.md |
-| M4 | Real-recording pilot | Not started | |
-| M5 | Midterm checkpoint | Not started | |
+| M4 | Pilot support and real-recording checks | Software/preparation complete under revised scope; real-data validation deferred | User authorized recordings later; save control, guide, and worksheet ready; no real pilot results |
+| M5 | Midterm checkpoint | Preparation complete by user instruction; overall validation checkpoint partial | docs/12_MIDTERM_PRESENTATION.md, docs/13_MIDTERM_DEMO.md, docs/14_M5_AUDIT.md, engineering snapshot |
 | F1 | ACF and quality | Not started | |
 | F2 | Labels, metrics, frozen protocol | Not started | |
 | F3 | Method comparison and SNR study | Not started | |
@@ -89,6 +89,32 @@ When code exists, record: audio band and N; filtering procedure; processing samp
 - Documentation: README, blueprint, and docs/09_M3_VERIFICATION.md describe current settings, checks, and limitations. No real breathing clips were found outside the ignored engineering cache; real-data validation remains pending.
 - Next stage: M4 only. Obtain 2–3 real recordings and manual full-cycle references, inspect duplicate/missed events, and make evidence-based pilot fixes. The midterm checkpoint is not complete yet; M4 and M5 remain.
 
+## M4 update on 27 November 2026
+
+- Data audit: no real WAV/FLAC/MP3/M4A clips or populated manual-reference files were found in the project. The user confirmed that no recordings or manual counts/timestamps are available elsewhere. Generated .cache fixtures remain engineering inputs, not pilot data.
+- Implemented collection support: app.py now offers Save original WAV for both uploaded and recorded inputs, using the original audio bytes and a downloadable WAV filename. Files are not automatically written into the project; save and rename each take into data/pilot.
+- Prepared: data/pilot/README.md, docs/10_M4_PILOT_GUIDE.md, and docs/11_M4_PILOT_WORKSHEET.md. They define collection, common analysis intervals, manual timestamp/count references, rate error, duplicate/missed-cycle review, documented tuning, and demo selection. Worksheet records are empty.
+- Verification: six GUI tests passed in 15.323 seconds, including saving after analysis without losing its rate. Python syntax compilation passed. Actual browser download completion, physical capture, and audible playback remain manual checks. The DSP code was unchanged; the 31-case M3 baseline remains the latest full-suite result.
+- Pilot outcome: no real-recording estimates, manual reference rates, errors, inspected cycles, accepted tuning decisions, reliable demo clip, or difficult real example can be reported yet. Existing filter and detection defaults remain unchanged; no individual student contributions were invented.
+- Status: M4 partial. Real-data completion requires at least two real clips with manual references and documented app results/observations. The midterm checkpoint remains incomplete.
+- Next action: collect 2–3 recordings using Save original WAV and fill the pilot worksheet, then resume M4. No M5 presentation or final-project features were added.
+
+## M5 update on 27 November 2026
+
+- Scope revision: the user explicitly requested completing M5 now and provisioning real recordings later. M5 packaging is complete; M4 real-recording work remains deferred and the overall midterm validation checkpoint remains partial. Missing data was not treated as permission to invent results.
+- Prepared: six-slide Markdown presentation with speaker notes and actual M2/M3 screenshots; demo runbook with generated-input sequence, fallback, device checks, and deferred-M4 resume prompt; item-by-item acceptance audit; tools/prepare_midterm_demo.py; six generated WAVs in data/midterm_engineering; docs/midterm-engineering-snapshot.json with actual settings/results. WAVs are ignored by Git and can be regenerated. The script preserves the original snapshot on reruns and writes current results into latest-run.json.
+- Checks: all 31 existing tests passed in 16.231 seconds; app.py/dsp.py compilation and pip check passed. The local launch succeeded; health and home page returned HTTP 200. The audit server was stopped. A restricted test attempt stalled and was interrupted; the successful run used the approved execution context from earlier stages.
+- Generated-file outputs: 12, 18, 24 BPM returned 12.00, 17.910448, 24.00; the 12 BPM full-pattern double-burst stress returned 24.00; constant carrier unavailable; silence rejected. These are engineering checks only. No real results, manual labels, noise experiments, or ACF comparisons were created.
+- Baseline DSP and GUI code unchanged in M5. No new browser capture was performed; existing screenshots retain their M2/M3 provenance. Microphone hardware capture, audible playback, browser download completion, real-data pilot, and actual individual contributions remain pending.
+- Next action: present/rehearse the documented prototype; use the deferred-M4 resume prompt when recordings become available. Stop at the midterm. Do not start F1 until explicitly instructed.
+
+## M4 scope closure on 27 November 2026
+
+- User instruction: complete the work possible now and supply recordings later. M4 software/preparation is complete under this revised scope; this supersedes the earlier partial stage label, without completing its real-data acceptance items.
+- Ready now: original-WAV saving, recording/labeling instructions, an empty pilot worksheet, the pilot folder, engineering verification, and the deferred-validation resume prompt in docs/13_MIDTERM_DEMO.md. M5 presentation/demo packaging already exists.
+- Deferred: provide 2–3 real WAVs with manual full-cycle references, compare the current baseline over the same interval, inspect duplicate/missed cycles, and document actual results and any supported fixes. Update the worksheet, presentation, and acceptance audit when that evidence exists.
+- No source code or DSP defaults changed during this scope update; no tests were rerun for documentation-only changes. The existing verification records retain their dates and limits. The overall validation checkpoint remains partial, and final-project implementation remains unstarted.
+
 ## Stage update template
 
 Copy this section for each completed or attempted stage:
@@ -106,17 +132,16 @@ Use Complete, Partial, Pending, or Failed with a reason. An implemented micropho
 
 ## Midterm snapshot
 
-To be filled during M5:
-- Checkpoint status:
-- Launch command and tested environment:
-- Demo recording IDs:
-- Actual filter and envelope settings:
-- Pilot reference and output table:
-- Screenshots:
-- Known limitations:
-- Unverified acceptance items:
-- Presentation content:
-- User instruction to continue to final project:
+- Checkpoint status: M5 preparation COMPLETE under revised scope; overall validation checkpoint PARTIAL; see docs/14_M5_AUDIT.md for all acceptance statuses.
+- Launch command: `.\.venv\Scripts\python.exe -m streamlit run app.py` from the project root. Existing Windows Python 3.12.10 environment and library versions above verified; health/root HTTP 200.
+- Demo inputs: generated 12/18/24 BPM, double-burst, constant-carrier, and silence WAVs in data/midterm_engineering. No real demo recording selected. Regenerate using tools/prepare_midterm_demo.py.
+- Actual filter/envelope/detection settings: docs/midterm-engineering-snapshot.json; no M5 change or final-evaluation freeze.
+- Pilot reference/output table: pending; empty worksheet remains docs/11_M4_PILOT_WORKSHEET.md. Generated-signal results are separately labeled in the snapshot and presentation.
+- Screenshots: docs/screenshots/m3-rate-summary.png, m3-cycle-markers.png, m2-waveforms.png, m2-spectrogram.png; actual M2/M3 browser runs on generated inputs.
+- Known limitations: possible inhale/exhale double counting, unresolved harmonic stress failure, initial filter/margin choices, no real-data accuracy established, no ACF/quality/SNR evaluation yet.
+- Unverified acceptance items: physical microphone capture, audible playback, actual downloaded-file round trip, real references/outputs and cycle inspection, individual contribution log.
+- Presentation content: docs/12_MIDTERM_PRESENTATION.md. Demo and later-recording procedure: docs/13_MIDTERM_DEMO.md.
+- User instruction to continue to final project: none; remain stopped at midterm.
 
 Do not remove this snapshot during session 2.
 

@@ -2,6 +2,8 @@
 
 Implement a compact offline audio-analysis app. A complete recording is processed after capture or upload. M1 input/preparation, M2 filtering/envelope plots, and M3 candidate peak detection/BPM are implemented as of 27 November 2026. Real-recording pilot validation is pending; it determines whether the initial settings need revision.
 
+M4 collection support adds Save original WAV, serving the original input bytes. Pilot collection and comparison instructions are ready, but no real recordings or manually checked pilot results exist yet. No DSP defaults have been changed during M4 preparation.
+
 ## Initial settings
 
 | Setting | Starting value | Reason and qualification |

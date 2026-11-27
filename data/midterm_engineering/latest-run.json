@@ -1,0 +1,89 @@
+{
+  "milestone": "M5 midterm prototype",
+  "source_type": "synthetic_engineering",
+  "note": "Not real breathing validation. Not the frozen final-evaluation configuration.",
+  "config": {
+    "sample_rate": 16000,
+    "min_source_sample_rate": 8000,
+    "min_duration_s": 30,
+    "max_duration_s": 120,
+    "max_upload_bytes": 52428800,
+    "silence_rms": 1e-06,
+    "audio_band_hz": [
+      100.0,
+      2000.0
+    ],
+    "envelope_band_hz": [
+      0.1,
+      0.8
+    ],
+    "filter_design_order": 2,
+    "rms_window_s": 0.25,
+    "rms_hop_s": 0.05,
+    "edge_margin_s": 5.0,
+    "peak_prominence_fraction": 0.15,
+    "min_cycle_markers": 3,
+    "flat_envelope_fraction": 0.01,
+    "interval_cv_warning": 0.2
+  },
+  "cases": [
+    {
+      "file": "data/midterm_engineering/engineering-12bpm.wav",
+      "source_type": "synthetic_engineering",
+      "known_full_pattern_bpm": 12,
+      "status": "provisional",
+      "estimated_bpm": 12.0,
+      "candidate_count": 10,
+      "absolute_error_bpm": 0.0,
+      "reason": "Based on 10 candidate markers and 9 intervals."
+    },
+    {
+      "file": "data/midterm_engineering/engineering-18bpm.wav",
+      "source_type": "synthetic_engineering",
+      "known_full_pattern_bpm": 18,
+      "status": "provisional",
+      "estimated_bpm": 17.91044776119405,
+      "candidate_count": 15,
+      "absolute_error_bpm": 0.08955223880595042,
+      "reason": "Based on 15 candidate markers and 14 intervals."
+    },
+    {
+      "file": "data/midterm_engineering/engineering-24bpm.wav",
+      "source_type": "synthetic_engineering",
+      "known_full_pattern_bpm": 24,
+      "status": "provisional",
+      "estimated_bpm": 24.0,
+      "candidate_count": 20,
+      "absolute_error_bpm": 0.0,
+      "reason": "Based on 20 candidate markers and 19 intervals."
+    },
+    {
+      "file": "data/midterm_engineering/engineering-double-burst-12bpm.wav",
+      "source_type": "synthetic_engineering",
+      "known_full_pattern_bpm": 12,
+      "status": "provisional",
+      "estimated_bpm": 24.0,
+      "candidate_count": 20,
+      "absolute_error_bpm": 12.0,
+      "reason": "Based on 20 candidate markers and 19 intervals."
+    },
+    {
+      "file": "data/midterm_engineering/engineering-constant-carrier.wav",
+      "source_type": "synthetic_engineering",
+      "known_full_pattern_bpm": null,
+      "status": "unavailable",
+      "estimated_bpm": null,
+      "candidate_count": 0,
+      "absolute_error_bpm": null,
+      "reason": "Insufficient envelope variation to support a breathing-rate estimate."
+    },
+    {
+      "file": "data/midterm_engineering/engineering-silence.wav",
+      "source_type": "synthetic_engineering",
+      "known_full_pattern_bpm": null,
+      "status": "input_rejected",
+      "estimated_bpm": null,
+      "reason": "No usable sound remains after channel averaging and DC removal. Check the microphone and record again in a quiet room."
+    }
+  ]
+}

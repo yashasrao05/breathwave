@@ -34,6 +34,8 @@ The immediate goal is a usable midterm prototype for a two-member student DSP pr
 
 The labels describe milestones, not marks or a percentage of implementation effort.
 
+**27 November status:** M1–M3 software, M4 software/preparation, and M5 presentation/demo preparation are complete. By explicit user instruction, the M4 real-recording pilot is deferred; the overall validation checkpoint remains partial. Start with [the M5 audit](14_M5_AUDIT.md) and [demo runbook](13_MIDTERM_DEMO.md) for the actual saved state. Deferred data and device checks must not be described as completed. Final-project features remain unstarted.
+
 ## Two implementation sessions
 
 **Session 1:** run M1 through M5 and reach the midterm checkpoint. Reserve time around that session to record clips, inspect annotations, and rehearse. The five calendar days before the working midterm date do not require five build sessions.

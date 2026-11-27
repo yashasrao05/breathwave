@@ -49,6 +49,10 @@ class AppTests(unittest.TestCase):
         metrics = {metric.label: metric.value for metric in app.metric}
         self.assertNotEqual(metrics["Peak BPM (provisional)"], "Unavailable")
         self.assertGreaterEqual(int(metrics["Candidate markers"]), 3)
+        previous_rate = app.session_state["analysis"]["peak_bpm"]
+        app.download_button[0].click().run(timeout=30)
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(app.session_state["analysis"]["peak_bpm"], previous_rate)
         app.file_uploader[0].set_value(("broken.wav", b"invalid", "audio/wav")).run(timeout=30)
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(len(app.error), 1)

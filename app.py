@@ -197,6 +197,10 @@ def main():
     st.subheader("Your recording")
     st.caption(uploaded.name)
     st.audio(audio_bytes, format="audio/wav")
+    st.download_button(
+        "Save original WAV", data=audio_bytes, file_name="breathing-recording.wav", mime="audio/wav"
+    )
+    st.caption("Save and rename each take before recording another one. This downloads the original, unprocessed audio.")
     duration_column, rate_column, channel_column = st.columns(3)
     duration_column.metric("Duration", f"{recording['duration_s']:.1f} s")
     rate_column.metric("Sample rate", f"{recording['source_sample_rate']:,} Hz")
