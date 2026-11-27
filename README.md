@@ -1,174 +1,161 @@
-# Smart Cold Storage Monitoring System
+# Respiration Rate Estimator
 
-An IoT application for monitoring temperature, relative humidity and door activity using ESP8266 NodeMCU, DHT22, LCD1602, Express, MongoDB Atlas and a React dashboard.
+An audio digital signal processing (DSP) web application for contactless respiration-rate estimation from recorded breathing sounds using Python, Streamlit, NumPy, SciPy, Matplotlib and SoundFile.
 
 ## Features
 
-- Temperature, humidity and door-state acquisition, targeting a five-second interval.
-- Five LCD pages for environment, door, Wi-Fi, backend/pending uploads and project identification.
-- Persistent LittleFS queue, recovery after restart and acknowledged synchronization.
-- Stable reading identifiers and duplicate-safe database writes.
-- Configurable threshold alerts and a 0–100 environmental risk score.
-- Responsive dashboard with historical charts, analytics and a door-open duration timeline.
-- Newest-first history table and selectable windows from 25 to 1000 readings.
-- Cloud HTTPS communication, authenticated device uploads and public dashboard reads.
-- Rolling storage policies for both pending flash readings and database history.
-
-## Live application
-
-- [Dashboard](https://smart-cold-storage-monitoring-system.onrender.com/)
-- [Backend health](https://smart-cold-storage-monitoring.onrender.com/)
-
-The backend and dashboard are deployed on Render, with MongoDB Atlas providing persistent storage. Communication uses cloud hostnames, so a laptop server and fixed local IP addresses are not required.
+- WAV file upload and browser-based microphone recording (`st.audio_input`), accepting mono or stereo WAV-family files (`WAV`, `WAVEX`, `RF64`) at 8,000 Hz or higher, 30–120 seconds long and up to 50 MiB.
+- Original audio metadata inspection (duration, sample rate, channel count), in-app playback and unmodified **Save original WAV** download.
+- Non-destructive preprocessing that retains original sample amplitudes for quality checks, averages stereo channels to mono, subtracts DC offset and resamples to 16,000 Hz with polyphase FIR anti-alias filtering (`resample_poly`).
+- Dual-band zero-phase Butterworth IIR filtering in second-order sections (`sosfiltfilt`): an acoustic band-pass (100–2000 Hz) followed by a slow breathing-rhythm band-pass (0.1–0.8 Hz).
+- Short-time RMS envelope extraction using 250 ms windows every 50 ms (20 Hz envelope sample rate) with center-frame timestamps.
+- Full-clip filtering prior to excluding five-second start and end margins from cycle detection, avoiding artificial crop edges inside the analyzed region.
+- Interactive diagnostic plots: min/max-binned original and filtered waveforms, input audio PSD spectrogram (512-sample Hann window, 256-sample overlap), and aligned raw RMS vs. signed filtered envelope with candidate cycle markers.
+- Candidate peak detection (`scipy.signal.find_peaks`) with an adjustable prominence fraction (`0.05`–`0.80`, default `0.15`), minimum 1.25 s peak spacing and median-interval BPM calculation.
+- Explicit handling of flat envelopes, insufficient markers, out-of-range rates and high interval variability, reporting `Unavailable` with diagnostic reasons rather than clamping or substituting zero BPM.
+- Automatic clearing of cached results whenever the audio source, uploaded/recorded audio or detection prominence setting changes.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  DHT[DHT22 and door input] --> ESP[ESP8266 NodeMCU]
-  ESP <--> FS[LittleFS persistent queue]
-  ESP --> LCD[LCD and page button]
-  ESP -->|Verified HTTPS and device key| API[Express API]
-  API <--> DB[(MongoDB Atlas)]
-  WEB[React dashboard] -->|Public REST GET polling| API
+  IN["WAV Upload or Browser Mic"] --> READ["read_wav Header and Sample Validation"]
+  READ --> PREP["prepare_audio: Mono Average, DC Removal, 16 kHz Resample"]
+  PREP --> SPEC["Input PSD Spectrogram (512-pt Hann Window)"]
+  PREP --> ABPF["Audio Band-Pass (100-2000 Hz, Butterworth SOS)"]
+  ABPF --> RMS["Short-Time RMS Envelope (250 ms Window, 50 ms Hop, 20 Hz)"]
+  RMS --> EBPF["Envelope Band-Pass (0.1-0.8 Hz, Butterworth SOS)"]
+  EBPF --> EDGE["Exclude 5 s Start and End Margins"]
+  EDGE --> PEAK["detect_cycles: find_peaks and Median-Interval BPM"]
+  PEAK --> GUI["Streamlit GUI: Provisional Rate, Details and Plots"]
 ```
 
-The node samples valid sensor readings approximately every five seconds and commits them locally before upload. The backend stores identified measurements, evaluates fresh readings, tracks door periods and calculates environmental risk. The browser obtains data through REST polling; it does not connect directly to Atlas.
+The application operates offline on complete recordings rather than real-time streams. `dsp.py` runs independently of Streamlit: it validates decoded WAV samples, preprocesses them to a uniform 16,000 Hz mono representation without peak normalization, filters the audible band to suppress low-frequency rumble and high-frequency noise, extracts the slow amplitude envelope, filters that envelope over the target respiration bandwidth and identifies candidate cycle peaks inside the central interval. `app.py` manages session state, playback, downloads, controls and Matplotlib visualizations.
 
-## Hardware and current wiring
+## DSP pipeline and configuration
 
-| Connection | NodeMCU label | GPIO |
-|---|---|---|
-| DHT22 DATA | D5 | 14 |
-| Door signal | A0 | ADC, threshold 500 |
-| LCD RS pin 4 | D1 | 5 |
-| LCD E pin 6 | D2 | 4 |
-| LCD D4 pin 11 | D4 | 2 |
-| LCD D5 pin 12 | D3 | 0 |
-| LCD D6 pin 13 | D6 | 12 |
-| LCD D7 pin 14 | D7 | 13 |
-| Page button | D0 to button to 3V3 | 16 |
+All baseline processing parameters are centralized in `AUDIO_CONFIG` inside [dsp.py](dsp.py) and included in every analysis result dictionary.
 
-The LCD constructor is `LiquidCrystal(D1, D2, D4, D3, D6, D7)`. The external button uses `INPUT_PULLDOWN_16`, active HIGH, with 35 ms debounce. Remove the old D3 button wiring; D3 now carries LCD data. Do not connect D0 to RST in this setup.
+| Parameter | Value | Purpose |
+| --- | --- | --- |
+| Processing sample rate | `16000` Hz | Uniform internal rate for filtering and frame sizing |
+| Minimum source sample rate | `8000` Hz | Ensures sufficient acoustic bandwidth before resampling |
+| Accepted clip duration | `30`–`120` s (~60 s recommended) | Captures multiple breathing cycles beyond edge margins |
+| Upload limit and channels | `50` MiB; `1` (mono) or `2` (stereo) | Enforced in header validation and `.streamlit/config.toml` |
+| Silence RMS threshold | `1e-6` | Rejects silent or zero-energy inputs after DC removal |
+| Audio band-pass | `100.0`–`2000.0` Hz | Separates audible breathing sound energy from rumble and hiss |
+| Envelope band-pass | `0.1`–`0.8` Hz | Targets slow rhythm repetitions corresponding to 6–48 BPM |
+| Filter design and application | Butterworth `N=2`, `output="sos"`, `sosfiltfilt` | Fourth-order band-pass per pass; effective response order eight |
+| RMS window and hop | `0.25` s window (`4000` samples), `0.05` s hop (`800` samples) | Produces a `20` Hz envelope with window-center timestamps |
+| Edge exclusion margin | `5.0` s at clip start and end | Excludes `[0, 5)` s and `[duration - 5, duration]` s after full-clip filtering |
+| Flat-envelope threshold | `0.01` (`1%` of median central RMS) | Flags nearly constant envelopes instead of fitting filter edge artifacts |
+| Minimum peak spacing | `1.25` s (`25` envelope samples at `20` Hz) | Derived from the `0.8` Hz (`48` BPM) upper search cutoff |
+| Prominence fraction | `0.15` default (`0.05`–`0.80` slider) | Fraction of the central filtered envelope's 95th-to-5th percentile span |
+| Minimum candidate markers | `3` markers (`2` intervals) | Required before computing a median-interval BPM |
+| Interval variability warning | Coefficient of variation `> 0.2` | Warns when candidate spacing varies substantially |
 
-Power the bare DHT22 from 3.3 V with common ground and a suitable DATA pull-up. Verify the specific board's A0 input range; the bare ESP8266 ADC is 0–1 V, while NodeMCU boards may have a divider. Never apply 5 V directly to A0 or GPIO. GPIO0 and GPIO2 must retain their boot levels. LCD power, contrast and backlight connections must match the module. Backlight pin 15 connects through a suitable resistor and pin 16 connects to ground.
+Because SciPy's `butter(N=2, ..., btype="bandpass")` designs a fourth-order band-pass filter per pass, applying it forward and backward via `sosfiltfilt` squares the magnitude response, yields zero phase distortion across the completed clip, and gives an effective filter order of eight. The specified cutoff frequencies act as `-3 dB` points in a single pass and approximately `-6 dB` points after forward-backward application.
 
-The five LCD pages show environment, door, Wi‑Fi/IP, backend/pending count and the Smart Cold Storage Monitor title. Cooperative servicing improves page‑button handling during HTTP activity, but synchronous HTTPS can still delay acquisition. The sampling interval is a scheduling target rather than a hard timing guarantee.
+For visualization in [app.py](app.py), waveforms use extrema-preserving min/max display bins (`ceil(N / 3000)` samples per bin) so plotting never downsamples the analysis signal. The spectrogram is computed from the DC-removed 16,000 Hz prepared audio before band-pass filtering using 512-sample Hann windows, 256-sample overlap, density scaling and an 80 dB dynamic display range.
+
+## Cycle detection and rate semantics
+
+- **Candidate detection:** `detect_cycles` evaluates `scipy.signal.find_peaks` strictly on the central filtered envelope slice (`5.0 <= t < duration - 5.0`), then maps peak indices back to original clip timestamps and projects them onto the raw RMS plot for visual comparison.
+- **Rate formula:** When at least three candidate peaks are found, `peak_bpm = 60 / median(diff(peak_times_s))`. Using the median reduces sensitivity to a single missed breath or outlier gap, and the interval coefficient of variation (`std / mean`) is reported alongside the marker timestamps.
+- **Unavailable results:** If the central RMS envelope is flat, the filtered envelope percentile span is negligible, fewer than three markers are detected, or the resulting rate falls outside `6`–`48` BPM, `peak_bpm` is returned as `None` and displayed as `Unavailable` with the underlying reason. Out-of-range rates are never clamped to boundary values.
+- **Provisional interpretation:** One complete breathing cycle consists of both inhalation and exhalation, which can appear as two separate acoustic bursts per breath. Detected peaks represent candidate events rather than verified full breaths, and the pipeline intentionally avoids automatic halving or heuristic post-hoc correction.
+
+## Input validation and audio handling
+
+`read_wav` inspects the WAV header before loading audio samples and rejects empty payloads, payloads exceeding 50 MiB, non-WAV formats, zero-sample files, channel counts other than 1 or 2, sample rates below 8,000 Hz, durations outside 30–120 seconds, truncated files and non-finite (`NaN`/`Inf`) samples.
+
+`prepare_audio` averages stereo channels without peak normalization, removes the mono DC offset, and verifies that signal energy exceeds `1e-6` RMS both before and after polyphase resampling to 16,000 Hz. Another `1e-6` RMS check is performed after the 100–2000 Hz audio band-pass. Recording capture and uploads stay inside the active Streamlit session; use **Save original WAV** in the UI to download the unmodified original audio bytes.
 
 ## Repository layout
 
 ```text
-backend/       Express service, models, storage maintenance and tests
-dashboard/     React/Vite UI, Recharts history and analytics
-esp8266/       Production sketch, configuration example and storage helpers
+app.py                         Streamlit web interface, state management, playback and plots
+dsp.py                         Independent DSP configuration, I/O validation, filtering and peak BPM
+requirements.txt               Python runtime dependencies
+.streamlit/config.toml         Server upload limit (50 MiB) and light UI theme
+tools/prepare_midterm_demo.py  Deterministic acoustic test-signal generator and pipeline runner
+tests/                         Unit, DSP processing, peak-estimation and Streamlit AppTest suites
+data/                          Local directories for pilot recordings and generated test signals
+docs/                          Technical blueprint, guides, templates, screenshots and verification logs
 ```
 
 ## Get the source
 
 ```bash
-git clone https://github.com/sachidanandnc/smart-cold-storage-monitoring-system.git
-cd smart-cold-storage-monitoring-system
+git clone https://github.com/yashasrao05/breathwave.git
+cd breathwave
 ```
 
-## Run the backend locally
+## Run locally
 
-1. Install Node.js 22.12 or newer and npm, compatible with the Vite dependency requirements.
-2. In `backend`, run `npm ci`. If package.json and its lock file disagree, run `npm install`, review the resulting lock-file change, and commit both together before using `npm ci` in deployment.
-3. Copy `backend/.env.example` to `backend/.env` and configure Atlas, thresholds, device ID, a random device key and allowed browser origins.
-4. Run `npm start` from `backend`. The default local origin is `http://localhost:5000`.
+1. Install Python 3.11 or 3.12.
+2. Create and populate a virtual environment from the repository root (PowerShell example):
 
-Production requires `MONGODB_URI`, a `DEVICE_API_KEY` of at least 32 characters and `CORS_ORIGIN`. Configure `DEVICE_ID` consistently with the firmware. Never publish `.env`, `wifi.h`, database passwords or device keys.
-
-Example threshold values in `.env.example` are temperature 2–8 °C, humidity 40–80 %, door warning 10 seconds and critical 20 seconds. They are configuration examples, not universal storage requirements or proof of the deployed private settings.
-
-## Run the dashboard locally
-
-From `dashboard`, install with `npm ci`, configure `.env` from its example, then run `npm run dev`. Set `VITE_API_BASE_URL=http://localhost:5000` for a local backend, or the verified cloud backend origin for a cloud connection. Vite embeds this setting at build time: rebuild and redeploy after changing it. Never put an upload key in a `VITE_` variable.
-
-Use `npm run build` for a production bundle in `dist`, `npm run lint` for source checks and `npm test` for the door‑activity tests. The dashboard documentation in [dashboard/README.md](dashboard/README.md) explains historical windows and event limits.
-
-## Firmware configuration and upload
-
-Open `esp8266/firmware/firmware.ino` for NodeMCU 1.0 ESP‑12E using ESP8266 Arduino Core 3.1.2 and the same 4 MB / 2 MB FS layout used by existing queued data. Install DHT sensor library, Adafruit Unified Sensor, LiquidCrystal and ArduinoJson compatible with the sketch. LittleFS and ESP8266 networking are part of the board core.
-
-Copy `wifi.example.h` to private `wifi.h`. Configure `MY_WIFI_SSID`, `MY_WIFI_PASSWORD`, `CLOUD_API_HOST` (hostname only), `DEVICE_API_KEY`, and a complete PEM root certificate in `SERVER_ROOT_CA`. The main sketch also accepts the older `SERVER_HOST` alias. The key must match the backend. The trust anchor must match a valid chain for the hostname; do not disable TLS verification to make a failed connection succeed.
-
-Use a 2.4 GHz network. Upload the firmware with the existing filesystem layout and without a full flash erase when preserving queued readings. Formatting intentionally deletes the queue. Keep any one‑time initializer in its own sketch folder with only one `setup()` and one `loop()`; do not compile multiple initializer sketches together or place them in the production sketch directory. The initializer folder contains separate helper sketches; copy only the selected helper into a clean Arduino sketch folder before using it.
-
-## Offline delivery and time semantics
-
-- A valid reading is written to LittleFS with stable `deviceId` and `readingId` before sending.
-- The newest eligible sample gets upload priority; older backlog is sent between new samples. HTTP/TLS reuse reduces repeated connection setup where supported.
-- The normal dequeue rule requires HTTP 200/201 and a matching successful `ack` with `stored: true`. Errors and uncertain responses retain the file for retry.
-- MongoDB's identity index makes an identical retry idempotent. Reusing an identity for different content is rejected.
-- The queue is bounded at 400 files and reserves filesystem space for updates. Actual capacity can be lower because files and metadata consume blocks. At capacity, the selected policy discards the oldest unacknowledged record to preserve newer observations; this is an explicit exception to ACK‑based deletion.
-- At one sample per five seconds, 400 samples represent about 33 minutes 20 seconds. This is capacity arithmetic, not a measured retention guarantee.
-- `capturedAt` describes observation time; `receivedAt` describes backend receipt. UTC is stored; backend console output uses IST. The door timeline explicitly formats IST, while other browser timestamps follow their formatter/browser locale.
-- A powered, previously synchronized device can advance its clock through a Wi‑Fi outage. A cold boot offline has no trustworthy date. Same‑boot unattempted data may be reconstructed from uptime after NTP, within the firmware's bound; capture times that cannot be established remain unknown.
-- Unknown‑time and historical uploads cannot become current live status or evaluate/resolve active alerts. Older door chronology cannot always be reconstructed after fresh readings have already been processed.
-
-## API and security
-
-| Method | Route | Access |
-|---|---|---|
-| GET | `/` | Public health |
-| POST | `/api/sensor-data` | `X-Device-Key` |
-| GET | `/api/sensor-data/latest` | Public |
-| GET | `/api/sensor-data/history?limit=N` | Public; default 100, maximum 1000 |
-| GET | `/api/risk/current` | Public |
-| GET | `/api/door-events` | Public; latest 100 events |
-| GET | `/api/alerts?active=true` | Public; recent alerts |
-
-Dashboard reads are public. `DASHBOARD_READ_KEY` is not required or used by the current application. Anyone can read the exposed operational records; CORS is browser response control, not authorization. Uploads remain authenticated. Production uses HTTPS, an 8 KB JSON limit, basic input checks and in‑process per‑IP rate limits of 900 uploads/minute and 180 API reads/minute. The backend trusts one proxy hop and binds to `0.0.0.0:PORT`.
-
-### Sensor upload format
-
-Readings carry a stable identity and timing information. This example represents a historical upload; a fresh reading uses its current capture time and `historical: false`.
-
-```json
-{
-  "deviceId": "cold-storage-01",
-  "readingId": "example-unique-reading-001",
-  "temperature": 5.2,
-  "humidity": 65,
-  "doorOpen": false,
-  "capturedAt": "2026-10-16T10:00:00Z",
-  "timeQuality": "ntp",
-  "historical": true
-}
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Send the credential in the `X-Device-Key` header. Successful storage returns an acknowledgement with the matching `deviceId`, `readingId` and `stored: true`. An identical retry is acknowledged as a duplicate; changed content using the same identity is rejected. When capture time is unknown, use `timeQuality: "unknown"` and `capturedAt: null`.
+3. Launch the Streamlit server:
 
-## Risk and door activity
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
 
-The score is capped at 100. Temperature outside the configured interval adds 20, 35 or 55 points for deviations up to 2 °C, up to 5 °C or above 5 °C. Humidity outside the interval adds 8, 14 or 20 points for deviations up to 10, up to 20 or above 20 percentage points. A currently open door adds 5 below the warning time, 15 from warning to below critical, and 25 at or above critical. Closed adds zero. Levels are LOW 0–24, MEDIUM 25–49, HIGH 50–74 and CRITICAL 75–100.
+4. Open `http://localhost:8501` in a browser if it does not open automatically. Press `Ctrl+C` in the terminal to stop the server.
 
-This is an environmental rule score. It represents configured environmental conditions rather than product spoilage. The backend creates and resolves active alerts from fresh eligible readings; historical replay contributes to stored history.
+For macOS/Linux shells, replace `.\.venv\Scripts\python.exe` with `./.venv/bin/python`.
 
-Completed door‑event records still count as openings. Uncertain periods are excluded from exact duration totals without disappearing from the opening count. The duration chart rises with observed open time and resets at a supported close. Short physical openings between transmitted observations may be missed. Unclosed periods stop at the last supported observation, rather than extending indefinitely to browser time.
+## Using the application
 
-## Storage and cloud operation
+1. Choose **Upload WAV** to load an existing recording or **Record audio** to capture audio through the browser microphone (grant microphone permission when prompted).
+2. Review the detected duration, sample rate and channel count, and verify audio output using the built-in player. Optionally click **Save original WAV** to download and rename the unprocessed clip before recording another take.
+3. Adjust **Peak prominence fraction** under **Detection settings** if needed (`0.15` by default). Changing either the input audio or the prominence slider clears any previous analysis result.
+4. Click **Analyze audio** to run preprocessing, filtering, RMS envelope extraction and candidate cycle detection.
+5. Inspect the provisional BPM, candidate marker count, analyzed duration, **Cycle detection details**, **Filter and envelope settings**, and the three diagnostic plot panels. Shaded gray intervals indicate the first and last five seconds excluded from cycle detection.
 
-Atlas history is rolling rather than retained forever. Every 30 seconds the backend checks cluster size, with default high/low watermarks of 420/380 MiB. Above the high mark it removes old completed readings in batches until space falls below the low mark. It protects the latest eligible reading, unfinished processing and recent receipts. If no eligible sensor records remain, old resolved alerts and closed events can be pruned. This is not a fixed‑age TTL and cannot guarantee headroom when other cluster data or a failed maintenance command consumes the quota.
+## Generated test signals
 
-Render backend settings: root `backend`, install dependencies with a synchronized lock file, start `node server.js`, set production environment variables. Static‑site settings: root `dashboard`, build `npm ci && npm run build`, publish `dist`, configure `VITE_API_BASE_URL` as the backend HTTPS origin. Set backend `CORS_ORIGIN` to the exact dashboard origin without a trailing slash. Auto‑deploy requires the service's GitHub connection, selected branch and auto‑deploy setting to be enabled; a local commit alone is not a push.
+To generate deterministic 60-second, 16,000 Hz mono FLOAT WAV acoustic test signals (using an amplitude-modulated 700 Hz carrier) and inspect their pipeline outputs, run:
 
-Free hosting has idle sleep, restart and quota limitations. The queue handles temporary failures within finite capacity; it does not provide unlimited lossless logging or guaranteed availability. See current [Render Free documentation](https://render.com/docs/free) and [Atlas Free limits](https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/).
+```powershell
+.\.venv\Scripts\python.exe tools/prepare_midterm_demo.py
+```
 
-## Verification and documentation
+This writes six test clips into `data/midterm_engineering/` (clean modulation at 12, 18 and 24 BPM; a 12 BPM double-burst stress case; an unmodulated constant carrier; and silence) along with measured outputs in `data/midterm_engineering/latest-run.json`. These files are deterministic engineering test fixtures for verifying DSP behavior, not recordings of human breathing.
 
-From `backend`: `npm run check` and `npm test`. From `dashboard`: `npm test`, `npm run lint`, `npm run build`. These software checks do not calibrate hardware. The backend tests use mocked storage/local services rather than writing test samples to deployed Atlas.
+## Verification and limitations
 
-Automated checks cover acknowledged delivery, duplicate handling, historical/live separation, timestamps, door chronology, API access and rolling storage. Dashboard tests cover event counts, durations, uncertainty and record ordering. Hardware checks include valid sensor readings, both door states, LCD page navigation, offline startup, queued‑data recovery after reboot and synchronization after reconnecting.
+Run the automated test suite and dependency integrity check from the repository root:
 
-## Author
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m pip check
+```
 
-**Sachidanand N C**
-Computer Science and Engineering
-RV Institute of Technology and Management, Bengaluru
+Automated coverage across [tests/](tests/) includes:
 
-[GitHub profile](https://github.com/sachidanandnc)
+- **Audio validation and preprocessing (`tests/test_audio.py`):** mono and stereo WAV decoding across 8,000–48,000 Hz, DC removal without mutating original amplitudes, anti-aliased downsampling, silence/cancelling-stereo rejection, duration/rate bounds, corrupt headers and non-finite samples.
+- **Filtering and RMS extraction (`tests/test_processing.py`):** RMS frame counts and center timestamps, audio and envelope band-pass gain/attenuation, survival of slow amplitude modulations (0.2, 0.3, 0.4 Hz) through the full pipeline, flat-envelope warnings and invalid filter arguments.
+- **Peak estimation (`tests/test_estimation.py`):** known-rate checks at 12, 18 and 24 BPM, median-interval robustness to a long gap, minimum peak spacing, insufficient-marker and out-of-range `Unavailable` behavior, prominence overrides and the double-burst harmonic limitation.
+- **GUI regression (`tests/test_app.py`):** Streamlit `AppTest` checks for upload/record mode switching, state clearing on input or prominence changes, metadata display, figure rendering, `Save original WAV` preservation and silent/corrupt input errors.
+
+Known limitations and scope notes:
+
+- **Single estimator and unvalidated real-world accuracy:** Rate estimation currently relies solely on candidate envelope peak intervals. Real human breathing recordings, manual cycle annotations, autocorrelation comparison and noise-robustness sweeps are not yet evaluated in the codebase.
+- **Double-counting susceptibility:** Audible inhale and exhale bursts within a single breath can trigger two candidate markers per cycle (as demonstrated by the 12 BPM double-burst stress fixture yielding 24 BPM).
+- **Hardware checks:** Automated tests exercise `st.audio_input` with staged WAV bytes; live microphone capture, browser file downloads and speaker playback depend on the host browser and audio hardware.
+- **Educational scope:** This software is an educational DSP demonstration and is not intended for medical or clinical diagnosis.
+
+## Contributors
+
+- **Sachidanand N C** ([GitHub](https://github.com/sachidanandnc))
+- **yashasrao05** ([GitHub](https://github.com/yashasrao05))
 
 ## License
 
