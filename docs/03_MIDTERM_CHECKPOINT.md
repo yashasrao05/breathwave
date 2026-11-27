@@ -4,6 +4,8 @@ The working target is 28 November 2026. Reach this checkpoint in session 1, then
 
 **M5 update, 27 November 2026:** by explicit user instruction, presentation/demo preparation is completed now while recordings are deferred. The overall validation checkpoint is **PARTIAL**. See [the item-by-item audit](14_M5_AUDIT.md), [presentation content](12_MIDTERM_PRESENTATION.md), and [demo runbook](13_MIDTERM_DEMO.md). Unchecked items below require the stated manual or real-data evidence, not more presentation packaging.
 
+M5 was reverified after the revised M4 software/preparation scope was closed: all 31 tests pass, the generated demo files reproduce the preserved snapshot, and the local app launches. Software/demo preparation is complete; use the runbook to rehearse, and resume its deferred-pilot prompt when recordings become available.
+
 ## Acceptance checklist
 
 Mark items complete only when supported by actual evidence.

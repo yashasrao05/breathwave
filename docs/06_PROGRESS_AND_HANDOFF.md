@@ -8,13 +8,13 @@ Use this file as the state record between chats. Update it after each implementa
 | --- | --- |
 | Last updated | 27 November 2026 |
 | Active milestone | Midterm prototype |
-| Active stage | M4 software/preparation and M5 packaging complete under revised scope; stopped at midterm; real-recording pilot deferred |
+| Active stage | M5 software/demo preparation complete and reverified after M4 scope closure; stopped at midterm; real-recording pilot deferred |
 | Documentation pack | Created |
 | Application code | M1–M3 pipeline implemented; M4 Save original WAV control added |
 | Real recordings | None available; user confirmed on 27 November 2026 |
 | Manual labels | None available; pilot guide and empty worksheet prepared |
 | GUI verification | M2/M3 browser evidence retained; M5 full suite includes six passing GUI checks; physical capture, audible playback, and browser file save pending |
-| DSP verification | M5: 31 tests pass in 16.231 s; generated demo WAVs reproduce known-rate/failure results; real-recording validation pending |
+| DSP verification | Latest M5 audit: 31 tests pass in 15.850 s; all six generated demo results/settings match the preserved snapshot; real-recording validation pending |
 | Experimental results | Engineering sanity checks only; real-recording evaluation pending |
 | Next action | Use M5 presentation/demo materials; later resume deferred M4 with real clips and references, update acceptance evidence; await explicit F1 instruction |
 | Final-project phase | Planned; do not start before midterm review |
@@ -28,7 +28,7 @@ Use this file as the state record between chats. Update it after each implementa
 | M2 | Filters, envelope, plots | Implemented and verified | 21 tests pass; browser plot screenshots and engineering measurements in docs/08_M2_VERIFICATION.md |
 | M3 | Peak estimate and markers | Implemented and verified on engineering inputs | 31 tests pass; known-rate and stress results plus browser screenshots in docs/09_M3_VERIFICATION.md |
 | M4 | Pilot support and real-recording checks | Software/preparation complete under revised scope; real-data validation deferred | User authorized recordings later; save control, guide, and worksheet ready; no real pilot results |
-| M5 | Midterm checkpoint | Preparation complete by user instruction; overall validation checkpoint partial | docs/12_MIDTERM_PRESENTATION.md, docs/13_MIDTERM_DEMO.md, docs/14_M5_AUDIT.md, engineering snapshot |
+| M5 | Midterm checkpoint | Software/demo preparation complete and reverified; overall validation checkpoint partial | Six-slide content, demo runbook, acceptance audit, preserved snapshot; latest 31-test and launch checks pass |
 | F1 | ACF and quality | Not started | |
 | F2 | Labels, metrics, frozen protocol | Not started | |
 | F3 | Method comparison and SNR study | Not started | |
@@ -114,6 +114,15 @@ When code exists, record: audio band and N; filtering procedure; processing samp
 - Ready now: original-WAV saving, recording/labeling instructions, an empty pilot worksheet, the pilot folder, engineering verification, and the deferred-validation resume prompt in docs/13_MIDTERM_DEMO.md. M5 presentation/demo packaging already exists.
 - Deferred: provide 2–3 real WAVs with manual full-cycle references, compare the current baseline over the same interval, inspect duplicate/missed cycles, and document actual results and any supported fixes. Update the worksheet, presentation, and acceptance audit when that evidence exists.
 - No source code or DSP defaults changed during this scope update; no tests were rerun for documentation-only changes. The existing verification records retain their dates and limits. The overall validation checkpoint remains partial, and final-project implementation remains unstarted.
+
+## M5 confirmation after M4 scope closure on 27 November 2026
+
+- User instruction: implement M5 now, retaining the agreed deferral of real recordings. Inspected the existing M5 materials and acceptance checklist; the six-slide content, demo runbook, screenshots, baseline snapshot, and continuation prompt are already present and consistent with implemented features.
+- Full suite: 31 tests passed in 15.850 seconds, including six GUI tests. Dependency checks found no broken requirements; compilation of app.py, dsp.py, and tools/prepare_midterm_demo.py passed.
+- Regenerated the six explicitly labeled engineering WAVs and compared latest-run.json against the original milestone snapshot: all settings and results match. The original snapshot's SHA-256 remained unchanged. Clean 12/18/24 BPM inputs return 12.00/17.910448/24.00; the double-burst failure remains 12-to-24 BPM, constant carrier unavailable, silence rejected.
+- Launch verification: the documented project environment started Streamlit at 127.0.0.1:8501; health returned HTTP 200 with body ok and the home page returned HTTP 200. The owned server was stopped after checking. A status-check command needed a variable-name correction; the app did not require a fix.
+- Visually reviewed the saved M3 rate-summary and cycle-marker screenshots. They remain readable and retain their original generated-input provenance; no new browser or physical-device verification is claimed. All 65 local links across 19 Markdown files resolve.
+- Scope outcome: M5 software/demo preparation is complete. Source code and DSP settings did not need changes. Real-data pilot results, physical microphone capture, audible playback, browser download completion, and individual contribution entries remain deferred or manual. The overall validation checkpoint stays partial. Rehearse using docs/13_MIDTERM_DEMO.md; resume its deferred-M4 prompt when recordings arrive. Stop here before F1.
 
 ## Stage update template
 

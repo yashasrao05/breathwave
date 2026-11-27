@@ -35,6 +35,18 @@ Save original WAV is additional collection support: its AppTest control retains 
 - Reused actual browser screenshots from M2/M3. No new browser capture, physical microphone test, speaker listening, or manual breathing annotation was performed during M5.
 - Runtime tests required the same approved execution outside the restricted runtime used in earlier stages; a stalled restricted test run was interrupted before the successful run. No app logic was changed for the environment.
 
+## Confirmation after M4 scope closure, 27 November 2026
+
+The user requested M5 after agreeing to defer recordings. The existing implementation and presentation materials were inspected and reverified; no additional application features or DSP changes were needed.
+
+- **31 tests passed in 15.850 seconds**, including all six GUI tests. Dependency checks and compilation of the app, DSP module, and demo-preparation script passed.
+- All six regenerated engineering results and configuration values match the original milestone snapshot. A SHA-256 comparison confirmed that the saved snapshot was unchanged.
+- The app launched in the existing environment; health returned HTTP 200 with body ok and the home page returned HTTP 200. The owned server was stopped afterward.
+- The saved M3 rate-summary and cycle-marker screenshots were visually reviewed for readability; their original capture dates and generated-input provenance remain unchanged. No fresh browser capture or hardware test was performed.
+- All 65 local links in 19 Markdown documents resolve. The presentation, runbook, pilot worksheet, and continuation instructions are ready for use.
+
+**M5 software/demo preparation is complete under the agreed scope.** The acceptance table above still records outstanding real-data, device, and contribution evidence. Supplying recordings later resumes the pilot; it does not require repeating M1–M5 software preparation.
+
 ## Preserved milestone artifacts
 
 - [Presentation content](12_MIDTERM_PRESENTATION.md): six slides with speaker notes and actual screenshots.
