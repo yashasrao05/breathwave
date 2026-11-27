@@ -1,11 +1,11 @@
-"""Audio preparation, filtering, and RMS extraction, independent of Streamlit."""
+"""Audio preparation, envelopes, and candidate peak rates, independent of Streamlit."""
 
 from io import BytesIO
 from math import gcd
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import butter, resample_poly, sosfiltfilt
+from scipy.signal import butter, find_peaks, resample_poly, sosfiltfilt
 
 
 AUDIO_CONFIG = {
@@ -21,6 +21,10 @@ AUDIO_CONFIG = {
     "rms_window_s": 0.25,
     "rms_hop_s": 0.05,
     "edge_margin_s": 5.0,
+    "peak_prominence_fraction": 0.15,
+    "min_cycle_markers": 3,
+    "flat_envelope_fraction": 0.01,
+    "interval_cv_warning": 0.2,
 }
 
 
@@ -145,9 +149,13 @@ def rms_envelope(samples, sample_rate, window_s, hop_s):
     return times, rms
 
 
-def analyze_audio(prepared):
-    """M2 pipeline: filter the full clip, extract RMS, then select valid centers."""
+def analyze_audio(prepared, prominence_fraction=None):
+    """Filter the full clip, extract RMS, then detect central candidate cycles."""
     config = AUDIO_CONFIG.copy()
+    if prominence_fraction is not None:
+        if not np.isfinite(prominence_fraction) or not 0 < prominence_fraction <= 1:
+            raise ValueError("The prominence fraction must be greater than zero and at most one.")
+        config["peak_prominence_fraction"] = float(prominence_fraction)
     samples = prepared["audio"]
     sample_rate = prepared["sample_rate"]
     if sample_rate != config["sample_rate"]:
@@ -173,12 +181,15 @@ def analyze_audio(prepared):
         raise ValueError("No usable sound remains in the audio filter band. Try another recording.")
     warnings = []
     span = float(np.percentile(central_rms, 95) - np.percentile(central_rms, 5))
-    if span <= max(float(np.median(central_rms)) * 0.01, np.finfo(float).eps):
+    flat_envelope = span <= max(
+        float(np.median(central_rms)) * config["flat_envelope_fraction"], np.finfo(float).eps
+    )
+    if flat_envelope:
         warnings.append(
             "The RMS envelope has very little amplitude variation. "
             "Filtered edge effects can still appear; a repeating breathing pattern is not established."
         )
-    return {
+    analysis = {
         "status": "processed",
         "config": config,
         "sample_rate": sample_rate,
@@ -192,4 +203,84 @@ def analyze_audio(prepared):
         "analysis_end_s": end,
         "analysis_mask": mask,
         "warnings": warnings,
+        "flat_envelope": flat_envelope,
     }
+    analysis.update(detect_cycles(analysis))
+    if analysis["interval_cv"] is not None and analysis["interval_cv"] > config["interval_cv_warning"]:
+        analysis["warnings"].append(
+            "Candidate intervals vary substantially. Missed bursts, duplicate bursts, or irregular "
+            "breathing may affect this provisional estimate."
+        )
+    return analysis
+
+
+def detect_cycles(analysis):
+    """Find candidate peaks and estimate BPM without identifying inhale/exhale phases."""
+    config = analysis["config"]
+    times = np.asarray(analysis["envelope_time_s"])
+    rhythm = np.asarray(analysis["rhythm"])
+    mask = np.asarray(analysis["analysis_mask"], dtype=bool)
+    if (times.ndim != 1 or rhythm.shape != times.shape or mask.shape != times.shape
+            or not np.isfinite(times).all() or not np.isfinite(rhythm).all()
+            or np.any(np.diff(times) <= 0)):
+        raise ValueError("Cycle detection needs aligned, finite envelope samples and increasing times.")
+
+    minimum_spacing = 1 / config["envelope_band_hz"][1]
+    result = {
+        "peak_indices": np.empty(0, dtype=int),
+        "peak_times_s": np.empty(0),
+        "peak_prominences": np.empty(0),
+        "intervals_s": np.empty(0),
+        "candidate_count": 0,
+        "peak_bpm": None,
+        "interval_cv": None,
+        "prominence_threshold": None,
+        "min_peak_spacing_s": minimum_spacing,
+        "rate_status": "unavailable",
+        "rate_reason": "Insufficient envelope samples for cycle detection.",
+    }
+    central_indices = np.flatnonzero(mask)
+    if central_indices.size < 3:
+        return result
+    central = rhythm[mask]
+    span = float(np.percentile(central, 95) - np.percentile(central, 5))
+    if analysis["flat_envelope"] or span <= np.finfo(float).eps:
+        result["rate_reason"] = "Insufficient envelope variation to support a breathing-rate estimate."
+        return result
+
+    threshold = config["peak_prominence_fraction"] * span
+    distance = int(np.ceil(minimum_spacing * analysis["envelope_sample_rate"]))
+    peaks, properties = find_peaks(central, distance=distance, prominence=threshold)
+    full_indices = central_indices[peaks]
+    peak_times = times[full_indices]
+    intervals = np.diff(peak_times)
+    result.update({
+        "peak_indices": full_indices,
+        "peak_times_s": peak_times,
+        "peak_prominences": properties["prominences"],
+        "intervals_s": intervals,
+        "candidate_count": len(peaks),
+        "prominence_threshold": threshold,
+    })
+    if len(peaks) < config["min_cycle_markers"]:
+        result["rate_reason"] = (
+            f"Only {len(peaks)} candidate markers found; at least {config['min_cycle_markers']} "
+            "are needed. Try a clearer or longer recording."
+        )
+        return result
+
+    bpm = float(60 / np.median(intervals))
+    result["interval_cv"] = float(np.std(intervals) / np.mean(intervals))
+    low_bpm, high_bpm = (60 * frequency for frequency in config["envelope_band_hz"])
+    if not low_bpm <= bpm <= high_bpm:
+        result["rate_reason"] = (
+            f"The candidate rate is outside the {low_bpm:g}–{high_bpm:g} BPM search range; "
+            "no estimate is reported."
+        )
+        return result
+    result.update({
+        "peak_bpm": bpm,
+        "rate_status": "provisional",
+        "rate_reason": f"Based on {len(peaks)} candidate markers and {len(intervals)} intervals.",
+    })
+    return result

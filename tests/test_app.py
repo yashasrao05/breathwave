@@ -6,6 +6,7 @@ import unittest
 from streamlit.testing.v1 import AppTest
 
 from test_audio import tone, wav_bytes
+from test_processing import modulated_tone
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
@@ -33,7 +34,7 @@ class AppTests(unittest.TestCase):
 
     def test_upload_prepare_then_replace_with_corrupt_input(self):
         app = AppTest.from_file(str(APP_PATH)).run(timeout=30)
-        audio = wav_bytes(tone(44100), 44100, subtype="PCM_16")
+        audio = wav_bytes(modulated_tone(0.3, duration=30, sample_rate=44100), 44100, subtype="PCM_16")
         app.file_uploader[0].set_value(("test-tone.wav", audio, "audio/wav")).run(timeout=30)
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(len(app.get("audio")), 1)
@@ -44,6 +45,10 @@ class AppTests(unittest.TestCase):
         self.assertEqual(app.session_state["prepared_audio"]["sample_rate"], 16000)
         self.assertEqual(app.session_state["analysis"]["envelope_sample_rate"], 20)
         self.assertEqual(len(app.get("image")), 3)
+        self.assertAlmostEqual(app.session_state["analysis"]["peak_bpm"], 18, delta=2)
+        metrics = {metric.label: metric.value for metric in app.metric}
+        self.assertNotEqual(metrics["Peak BPM (provisional)"], "Unavailable")
+        self.assertGreaterEqual(int(metrics["Candidate markers"]), 3)
         app.file_uploader[0].set_value(("broken.wav", b"invalid", "audio/wav")).run(timeout=30)
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(len(app.error), 1)
@@ -70,6 +75,21 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(app.exception), 0)
         self.assertEqual(len(app.get("audio")), 1)
         self.assertEqual(app.success[0].value, "Audio filtered and envelope extracted successfully.")
+        metrics = {metric.label: metric.value for metric in app.metric}
+        self.assertEqual(metrics["Peak BPM (provisional)"], "Unavailable")
+        self.assertEqual(metrics["Candidate markers"], "0")
+
+    def test_detection_setting_change_clears_previous_estimate(self):
+        app = AppTest.from_file(str(APP_PATH)).run(timeout=30)
+        audio = wav_bytes(modulated_tone(0.3, duration=30), 16000, subtype="PCM_16")
+        app.file_uploader[0].set_value(("engineering.wav", audio, "audio/wav")).run(timeout=30)
+        app.button[0].click().run(timeout=30)
+        self.assertIsNotNone(app.session_state["analysis"]["peak_bpm"])
+        app.slider[0].set_value(0.30).run(timeout=30)
+        self.assertEqual(len(app.exception), 0)
+        self.assertNotIn("analysis", app.session_state)
+        self.assertNotIn("prepared_audio", app.session_state)
+        self.assertNotIn("Peak BPM (provisional)", [metric.label for metric in app.metric])
 
 
 if __name__ == "__main__":

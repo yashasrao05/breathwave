@@ -1,6 +1,6 @@
 # Project blueprint
 
-Implement a compact offline audio-analysis app. A complete recording is processed after capture or upload. M1 input/preparation and M2 filtering/envelope plots are implemented as of 25 November 2026. Peak detection and estimation remain the starting design for later stages; pilot recordings determine whether settings need revision.
+Implement a compact offline audio-analysis app. A complete recording is processed after capture or upload. M1 input/preparation, M2 filtering/envelope plots, and M3 candidate peak detection/BPM are implemented as of 27 November 2026. Real-recording pilot validation is pending; it determines whether the initial settings need revision.
 
 ## Initial settings
 
@@ -23,7 +23,7 @@ Implement a compact offline audio-analysis app. A complete recording is processe
 | Peak prominence | Start at 0.15 times the envelope 95th-to-5th percentile span | Relative threshold; expose for pilot tuning, then freeze |
 | Minimum markers | Three accepted cycle markers | Two intervals give a provisional estimate; few cycles limit reliability |
 
-The input, filter, and envelope defaults are implemented through M2, but are not measured optimum choices. Detection settings remain proposed. A 5-second margin does not guarantee all filter transients are removed. Inspect the plots and change the policy if evidence warrants it, before the final evaluation is frozen.
+The input, filter, envelope, and peak-detection defaults are implemented through M3, but are not measured optimum choices. A 5-second margin does not guarantee all filter transients are removed. Inspect the plots and change the policy if evidence warrants it, before the final evaluation is frozen.
 
 Use one shared configuration in dsp.py. Do not duplicate defaults in the UI, evaluation code, and report. When users change a tuning control, include the actual setting in the displayed run details and exported results.
 
@@ -67,6 +67,10 @@ For at least three accepted markers at times t:
 - If the estimate is outside 6 to 48 BPM, or the data cannot support an estimate, return unavailable with a reason. Do not clamp it to a boundary.
 
 For strongly ambiguous cycles, the app may show a provisional candidate estimate with a warning. A number must not imply that the cycle interpretation has been validated.
+
+M3 reports all available estimates as provisional. The GUI offers a prominence-fraction slider from 0.05 to 0.80, in steps of 0.05, defaulting to 0.15. Actual settings are stored with each analysis; changing the setting invalidates the displayed result. Marker spacing is derived from the maximum search frequency: 1/0.8 = 1.25 seconds, or 25 envelope samples. Three or more markers are required. Results outside 6–48 BPM return no BPM instead of being clamped.
+
+The existing M2 flat-RMS heuristic (central percentile span at most 1% of median RMS) now prevents reporting an estimate from that degenerate envelope. With usable variation, candidate times, prominences, intervals, and interval coefficient of variation are retained. A coefficient above 0.2 triggers an interval-variability warning, not a confidence score. A two-burst engineering pattern can yield a doubled estimate even with regular intervals; no automatic division by two is applied. This must be examined with manual full-cycle references in M4.
 
 ## Autocorrelation baseline for the final project
 
